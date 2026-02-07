@@ -16,7 +16,7 @@ The Biomemetic Complex (BMC) framework proposes that goal-directed behavior emer
 
 ```
 prototype/
-  memplex_visualization.ipynb   # Full simulation: 46-node BMC graph, 7 scenarios
+  memplex_visualization.ipynb   # Full simulation: 46-node BMC graph, 9 scenarios
 figures/
   figure1_architecture.pdf      # Architecture diagram (Figure 1 in paper)
 ```
@@ -24,16 +24,21 @@ figures/
 ## Prototype
 
 The simulation implements a single BMC agent with:
-- **46 nodes**: 7 utility drives + 39 memes across 5 semantic clusters
-- **121 edges**: 107 meme-meme + 14 utility-meme interface connections
-- **7 scenarios**: normal cognition, acute stress, hub attack, fatigue, compatible/incompatible meme introduction, hub displacement
+- **46 nodes**: 7 utility drives (Panksepp affective systems) + 39 memes across 5 semantic clusters
+- **Signed edges**: positive (reinforcement) and negative (inhibition) connections
+- **9 scenarios**: normal cognition, acute stress, hub attack, fatigue, immune response (accept/reject), hub displacement, edge decay, sleep consolidation + BLEND, sleeper effect
 
 Key mechanisms demonstrated:
 - Four qualitative regimes (M-dominance, G-dominance, Balance, Conflict)
+- Signed-edge structural balance analysis
 - Memetic immune system (accept/reject based on compatibility)
+- Panksepp affective binding (SEEKING, RAGE, FEAR, PANIC, CARE, PLAY, LUST)
 - Utility inertia for observable defensive dynamics
 - Fatigue-induced cognitive regression
-- Hub fragility with centrality-protected edge decay
+- Hub fragility with asymmetric edge decay
+- Sleep consolidation with memory BLEND
+- Sleeper effect (delayed meme acceptance)
+- Monte Carlo validation (50 seeds × 8 scenarios)
 
 ## Requirements
 
