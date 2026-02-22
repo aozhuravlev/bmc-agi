@@ -1,12 +1,14 @@
 # BMC-AGI: Biomemetic Complex Prototype
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18733165.svg)](https://doi.org/10.5281/zenodo.18733165)
+
 Prototype simulation code for the BMC (Biomemetic Complex) framework.
 
-> **Biomemetic Complex: A Fractal Architecture for Consciousness and AGI**
+> **A Tension Is All You Need: The Biomemetic Complex as a Unified Computational Theory of Consciousness**
 >
-> Aleksey Zhuravlev
+> Aleksey Zhuravlev (2026)
 >
-> [bmc-theory.org](https://bmc-theory.org) | Interactive demo: [bmc-theory.org/demo](https://bmc-theory.org/demo/)
+> Paper: [doi.org/10.5281/zenodo.18733165](https://doi.org/10.5281/zenodo.18733165) | Website: [bmc-theory.org](https://bmc-theory.org) | Demo: [bmc-theory.org/demo](https://bmc-theory.org/demo/)
 
 ## Overview
 
@@ -83,6 +85,19 @@ jupyter notebook prototype/memplex_visualization.ipynb
 
 # Scaling analysis (takes ~30 min on 8 cores)
 cd prototype && python -m bmc.scaling_analysis
+```
+
+## Citation
+
+```bibtex
+@misc{zhuravlev2026tension,
+  author = {Zhuravlev, Aleksey},
+  title = {A Tension Is All You Need: The Biomemetic Complex as a Unified Computational Theory of Consciousness},
+  year = {2026},
+  publisher = {Zenodo},
+  doi = {10.5281/zenodo.18733165},
+  url = {https://doi.org/10.5281/zenodo.18733165}
+}
 ```
 
 ## License
