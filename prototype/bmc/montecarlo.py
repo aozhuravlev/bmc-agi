@@ -4,10 +4,14 @@ import multiprocessing as mp
 import numpy as np
 
 from .mc_worker import run_seed, init_worker
-from .graph import build_bmc_graph, MEME_TO_CLUSTER
+from .graph import build_bmc_graph, MEME_TO_CLUSTER, SMC_MEMES, SMC_LEVEL_1, SMC_LEVEL_2
 from .analysis import detect_structural_balance
 from .simulator import BMCSimulator
 from .config import CONSOLIDATION_PRUNE_THRESHOLD
+
+# SMC levels dict (built once, reused)
+_SMC_LEVELS = {m: 1 for m in SMC_LEVEL_1}
+_SMC_LEVELS.update({m: 2 for m in SMC_LEVEL_2})
 
 
 def ci95(arr):
@@ -20,7 +24,8 @@ def ci95(arr):
 
 def _create_simulator(seed=42, **kw):
     G_mc, INCOMPAT_mc = build_bmc_graph(seed=seed)
-    return BMCSimulator(G_mc, INCOMPAT_mc)
+    return BMCSimulator(G_mc, INCOMPAT_mc,
+                        smc_memes=SMC_MEMES, smc_levels=_SMC_LEVELS)
 
 
 def run_monte_carlo(n_seeds=50, base_seed=42, n_workers=None, progress_cb=None):
@@ -74,7 +79,7 @@ def report_monte_carlo(results, n_mc=None):
     W_NAME, W_MEAN, W_CI, W_PASS = 36, 10, 20, 8
     lines = []
     lines.append(f"{'Metric':<{W_NAME}} {'Mean':>{W_MEAN}} {'95% CI':>{W_CI}} {'Pass':>{W_PASS}}")
-    lines.append('=' * (W_NAME + W_MEAN + W_CI + W_PASS))
+    lines.append('=' * ((W_NAME + W_MEAN + W_CI + W_PASS) + 3))
 
     m, lo, hi = ci95(mc['S1_peak_balance'])
     lines.append(f"{'S1: Peak balance':<{W_NAME}} {m:>{W_MEAN}.3f} {_fmt_ci(lo,hi):>{W_CI}} {'--':>{W_PASS}}")
@@ -113,13 +118,32 @@ def report_monte_carlo(results, n_mc=None):
     sf = sum(mc['S8_sign_flip'])
     lines.append(f"{'S8: Sleeper sign flip':<{W_NAME}} {'':>{W_MEAN}} {'':>{W_CI}} {f'{sf}/{n_mc}':>{W_PASS}}")
 
+    sit_present = sum(mc['S9_sit_present'])
+    lines.append(f"{'S9: SIT present':<{W_NAME}} {'':>{W_MEAN}} {'':>{W_CI}} {f'{sit_present}/{n_mc}':>{W_PASS}}")
+
+    fc_reduces = sum(mc['S9_fc_reduces_sit'])
+    lines.append(f"{'S9: False closure → SIT↓':<{W_NAME}} {'':>{W_MEAN}} {'':>{W_CI}} {f'{fc_reduces}/{n_mc}':>{W_PASS}}")
+
+    m_cl, lo_cl, hi_cl = ci95(mc['S10_cl_max'])
+    cl_pos = sum(mc['S10_cl_positive'])
+    lines.append(f"{'S10: CL metric > 0':<{W_NAME}} {m_cl:>{W_MEAN}.4f} {_fmt_ci(lo_cl,hi_cl,4):>{W_CI}} {f'{cl_pos}/{n_mc}':>{W_PASS}}")
+
+    inv_has = sum(mc['S11_has_inversions'])
+    m_inv, lo_inv, hi_inv = ci95(mc['S11_inversions'])
+    lines.append(f"{'S11: Sign inversions occur':<{W_NAME}} {m_inv:>{W_MEAN}.1f} {_fmt_ci(lo_inv,hi_inv,1):>{W_CI}} {f'{inv_has}/{n_mc}':>{W_PASS}}")
+
+    cl_inc = sum(mc['S12_closure_increased'])
+    m_clo, lo_clo, hi_clo = ci95(mc['S12_closure'])
+    lines.append(f"{'S12: Action → closure↑':<{W_NAME}} {m_clo:>{W_MEAN}.3f} {_fmt_ci(lo_clo,hi_clo):>{W_CI}} {f'{cl_inc}/{n_mc}':>{W_PASS}}")
+
     m_bal, _, _ = ci95(mc['balance_ratio'])
     m_amb, _, _ = ci95(mc['mean_ambivalence'])
     lines.append(f"\n{'Structural balance ratio (mean)':<{W_NAME}} {m_bal:>{W_MEAN}.3f}")
     lines.append(f"{'Mean ambivalence':<{W_NAME}} {m_amb:>{W_MEAN}.4f}")
 
-    total_pass = (lt1 + pos + pos3f + pos4 + acc + rej + ec_pass + blend_pos + sf)
-    total_checks = 9 * n_mc
+    total_pass = (lt1 + pos + pos3f + pos4 + acc + rej + ec_pass + blend_pos + sf
+                  + sit_present + fc_reduces + cl_pos + inv_has + cl_inc)
+    total_checks = 14 * n_mc
     pct_pass = 100 * total_pass / total_checks
     lines.append(f"\nOverall directional pass rate: {total_pass}/{total_checks} ({pct_pass:.0f}%)")
 

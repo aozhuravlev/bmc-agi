@@ -1,44 +1,69 @@
-# BMC-AGI: Biomemetic Complex for Artificial General Intelligence
+# BMC-AGI: Biomemetic Complex Prototype
 
-Prototype simulation code for the paper:
+Prototype simulation code for the BMC (Biomemetic Complex) framework.
 
-> **A Tension Is All You Need: How Competing Drives Create Agency in AI**
+> **Biomemetic Complex: A Fractal Architecture for Consciousness and AGI**
 >
 > Aleksey Zhuravlev
 >
-> [arXiv:XXXX.XXXXX](https://arxiv.org/abs/XXXX.XXXXX)
+> [bmc-theory.org](https://bmc-theory.org) | Interactive demo: [bmc-theory.org/demo](https://bmc-theory.org/demo/)
 
 ## Overview
 
-The Biomemetic Complex (BMC) framework proposes that goal-directed behavior emerges from **dynamic tension between two interacting systems**: a fixed utility layer (analogous to genetic drives) and a dynamic memetic layer (acquired cultural information). This repository contains the prototype simulation that validates the framework.
+The Biomemetic Complex (BMC) framework models consciousness as emergent from **dynamic tension between two replicator systems**: a fixed utility layer G (analogous to genetic drives) and a dynamic memetic layer M (acquired knowledge). The framework produces a computable Consciousness Level (CL) metric, subsumes five competing theories (IIT, GNW, HOT, AST, PP) as special cases, and retrodicts 9/9 results from the COGITATE adversarial study (Nature 2025).
 
 ## Repository Contents
 
 ```
 prototype/
-  memplex_visualization.ipynb   # Full simulation: 46-node BMC graph, 9 scenarios
+  bmc/                            # BMC simulator engine
+    simulator.py                  # Core BMC dynamics (~1300 lines)
+    config.py                     # All parameters (~115 params)
+    scaling_analysis.py           # Block 6: Scaling analysis (N=100..10000)
+    graph.py, analysis.py, ...    # Supporting modules
+  bmc_nodes_500.py                # 510-meme graph definition (21 clusters, 1205 edges)
+  memplex_visualization.ipynb     # Interactive notebook: scenarios + Monte Carlo
+  results/
+    scaling_analysis.json          # Raw scaling data (38+126 runs)
+    scaling_summary.png            # 2×2 summary panel
+    scaling_*.png                  # Individual plots
 figures/
-  figure1_architecture.pdf      # Architecture diagram (Figure 1 in paper)
+  figure1_architecture.pdf         # Architecture diagram
 ```
 
 ## Prototype
 
 The simulation implements a single BMC agent with:
-- **46 nodes**: 7 utility drives (Panksepp affective systems) + 39 memes across 5 semantic clusters
-- **Signed edges**: positive (reinforcement) and negative (inhibition) connections
-- **9 scenarios**: normal cognition, acute stress, hub attack, fatigue, immune response (accept/reject), hub displacement, edge decay, sleep consolidation + BLEND, sleeper effect
+- **510 meme nodes** across 21 semantic clusters + **8 utility drives** (Panksepp affective systems)
+- **1205 signed edges**: positive (reinforcement) and negative (inhibition)
+- **26 validation scenarios**: normal cognition, stress, hub attack, fatigue, immune response, hub displacement, sleep + BLEND, sleeper effect, κ consolidation (sensory/STM/LTM), and more
+- **Monte Carlo validation**: 50+ seeds per scenario, ablation analysis (13/13 mechanisms necessary)
 
-Key mechanisms demonstrated:
+Key mechanisms:
 - Four qualitative regimes (M-dominance, G-dominance, Balance, Conflict)
-- Signed-edge structural balance analysis
-- Memetic immune system (accept/reject based on compatibility)
-- Panksepp affective binding (SEEKING, RAGE, FEAR, PANIC, CARE, PLAY, LUST)
-- Utility inertia for observable defensive dynamics
-- Fatigue-induced cognitive regression
-- Hub fragility with asymmetric edge decay
-- Sleep consolidation with memory BLEND
-- Sleeper effect (delayed meme acceptance)
-- Monte Carlo validation (50 seeds × 8 scenarios)
+- CL metric: CL(t) = σ_norm · A_SMC · f(Balance) — computable in O(N log N)
+- κ consolidation levels (sensory → STM → LTM) with differential decay
+- SIT (Structural Incompleteness Tension) — curiosity/drive formalization
+- Memetic immune system (I-layer: accept/reject based on compatibility)
+- SMC (Self-Model Cluster) with recursion depth tracking
+
+## Scaling Analysis (Block 6)
+
+Demonstrates CL scale-invariance across two orders of magnitude:
+
+| N | σ_SW | CL (steady-state) | Time/step |
+|---|------|-------------------|-----------|
+| 100 | 2.47±0.59 | 0.039±0.025 | 0.02s |
+| 500 | 4.77±0.55 | 0.043±0.011 | 0.19s |
+| 1000 | 5.99±0.82 | 0.033±0.007 | 0.58s |
+| 5000 | 8.80±0.92 | 0.042±0.005 | 3.30s |
+| 10000 | 10.69±1.57 | 0.055±0.002 | 6.33s |
+
+CL remains in the ~0.03–0.05 corridor. Computation scales as O(N log N), compared to IIT's Φ which is O(2^N) and infeasible beyond N ≈ 20.
+
+Phase transition: CL = 0 when SMC fraction = 0 (no self-model → no consciousness), with sharp onset at any SMC > 0.
+
+Run: `cd prototype && python -m bmc.scaling_analysis`
 
 ## Requirements
 
@@ -47,21 +72,17 @@ python >= 3.9
 networkx
 numpy
 matplotlib
+tqdm
 ```
 
 ## Usage
 
-Open `prototype/memplex_visualization.ipynb` in Jupyter and run all cells.
+```bash
+# Interactive notebook
+jupyter notebook prototype/memplex_visualization.ipynb
 
-## Citation
-
-```bibtex
-@article{zhuravlev2025tension,
-  title={A Tension Is All You Need: How Competing Drives Create Agency in AI},
-  author={Zhuravlev, Aleksey},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2026}
-}
+# Scaling analysis (takes ~30 min on 8 cores)
+cd prototype && python -m bmc.scaling_analysis
 ```
 
 ## License

@@ -167,12 +167,20 @@ def plot_scenario(sim, title):
 
     # (f) Meme state counts
     ax = axes[1, 2]
-    ax.stackplot(steps,
-                 [x['states']['active'] for x in h],
-                 [x['states']['decorative'] for x in h],
-                 [x['states']['sleeping'] for x in h],
-                 labels=['Active', 'Decorative', 'Sleeping'],
-                 colors=['#d62728', '#ff7f0e', '#1f77b4'], alpha=0.7)
+    n_open = h[0]['states'].get('open', 0) if h else 0
+    stack_data = [
+        [x['states']['active'] for x in h],
+        [x['states']['decorative'] for x in h],
+        [x['states']['sleeping'] for x in h],
+    ]
+    stack_labels = ['Active', 'Decorative', 'Sleeping']
+    stack_colors = ['#d62728', '#ff7f0e', '#1f77b4']
+    ax.stackplot(steps, *stack_data,
+                 labels=stack_labels, colors=stack_colors, alpha=0.7)
+    if n_open > 0:
+        ax.annotate(f'{n_open} open memes (constant)',
+                    xy=(0.98, 0.98), xycoords='axes fraction',
+                    ha='right', va='top', fontsize=8, color='#e377c2')
     ax.set_ylabel('Meme count'); ax.set_title('Meme States')
     ax.legend(loc='upper right'); ax.grid(alpha=0.3)
 
@@ -523,3 +531,307 @@ def plot_filmstrip(sim, keyframes, title):
     fig.suptitle(title, fontsize=13)
     plt.tight_layout()
     return fig
+
+
+def plot_sit_scenario(sim_base, sim_fc, open_memes, fc_step):
+    """S9: 6-panel SIT scenario visualization.
+
+    Args:
+        sim_base: simulator run WITH open memes (full run, no false closure)
+        sim_fc: simulator run WITH false closure applied at fc_step
+        open_memes: list of open meme names
+        fc_step: timestep at which false closure was applied
+    """
+    fig, axes = plt.subplots(2, 3, figsize=(13, 7))
+    h_base = sim_base.history
+    h_fc = sim_fc.history
+    steps_base = range(len(h_base))
+    steps_fc = range(len(h_fc))
+
+    # (a) SEEKING activation with SIT
+    ax = axes[0, 0]
+    seek_base = [x['activations'].get('SEEKING', 0) for x in h_base]
+    seek_fc = [x['activations'].get('SEEKING', 0) for x in h_fc]
+    ax.plot(steps_base, seek_base, color='#fc8d59', lw=2, label='With SIT')
+    ax.plot(steps_fc, seek_fc, color='#6baed6', lw=2, ls='--',
+            label='After false closure')
+    ax.axvline(fc_step, color='yellow', ls='--', alpha=0.5,
+               label='False closure')
+    ax.set_ylabel('SEEKING activation'); ax.set_title('(a) SEEKING: SIT boost')
+    ax.legend(fontsize=8); ax.grid(alpha=0.3)
+
+    # (b) SIT total over time
+    ax = axes[0, 1]
+    sit_base = [x.get('sit_total', 0) for x in h_base]
+    sit_fc = [x.get('sit_total', 0) for x in h_fc]
+    ax.plot(steps_base, sit_base, color='#e377c2', lw=2, label='Baseline')
+    ax.plot(steps_fc, sit_fc, color='#9467bd', lw=2, ls='--',
+            label='With false closure')
+    ax.axvline(fc_step, color='yellow', ls='--', alpha=0.5)
+    ax.set_ylabel('SIT total'); ax.set_title('(b) SIT over time')
+    ax.legend(fontsize=8); ax.grid(alpha=0.3)
+
+    # (c) Open meme activations (pulsation)
+    ax = axes[0, 2]
+    colors_om = ['#d62728', '#2ca02c', '#ff7f0e', '#17becf', '#9467bd']
+    for i, om in enumerate(open_memes[:5]):
+        acts = [x['activations'].get(om, 0) for x in h_base]
+        ax.plot(steps_base, acts, lw=1.5, label=om[:18],
+                color=colors_om[i % len(colors_om)])
+    ax.set_ylabel('Activation'); ax.set_title('(c) Open meme pulsation')
+    ax.legend(fontsize=7); ax.grid(alpha=0.3)
+
+    # (d) Edge weights near open memes (decay resistance)
+    ax = axes[1, 0]
+    for i, om in enumerate(open_memes[:3]):
+        weights = []
+        for h in h_base:
+            ew = h['edge_weights']
+            om_weights = [abs(ew.get((om, nb), 0)) for nb in sim_base.G.neighbors(om)
+                          if nb not in sim_base.utility_set]
+            weights.append(np.mean(om_weights) if om_weights else 0)
+        ax.plot(steps_base, weights, lw=1.5, label=om[:18],
+                color=colors_om[i % len(colors_om)])
+    ax.set_ylabel('Mean |edge weight|')
+    ax.set_title('(d) Edge decay resistance (open memes)')
+    ax.legend(fontsize=7); ax.grid(alpha=0.3)
+
+    # (e) False closure: SIT before vs after
+    ax = axes[1, 1]
+    sit_per_cluster_before = h_fc[fc_step - 1].get('sit_per_cluster', {})
+    sit_per_cluster_after = h_fc[min(fc_step + 10, len(h_fc) - 1)].get(
+        'sit_per_cluster', {})
+    clusters_with_sit = [c for c in sit_per_cluster_before
+                         if sit_per_cluster_before.get(c, 0) > 0.0001]
+    if clusters_with_sit:
+        x_pos = np.arange(len(clusters_with_sit))
+        vals_before = [sit_per_cluster_before.get(c, 0) for c in clusters_with_sit]
+        vals_after = [sit_per_cluster_after.get(c, 0) for c in clusters_with_sit]
+        width = 0.35
+        ax.bar(x_pos - width/2, vals_before, width, label='Before FC',
+               color='#fc8d59', alpha=0.8)
+        ax.bar(x_pos + width/2, vals_after, width, label='After FC',
+               color='#6baed6', alpha=0.8)
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels([c[:10] for c in clusters_with_sit],
+                           rotation=45, ha='right', fontsize=8)
+    ax.set_ylabel('SIT'); ax.set_title('(e) False closure: SIT drop')
+    ax.legend(fontsize=8); ax.grid(alpha=0.3)
+
+    # (f) SEEKING drop after false closure
+    ax = axes[1, 2]
+    seek_window = 10
+    seek_before_fc = np.mean(seek_fc[max(0, fc_step-seek_window):fc_step])
+    seek_after_fc = np.mean(seek_fc[fc_step:min(fc_step+seek_window, len(seek_fc))])
+    ax.bar(['Before FC', 'After FC'], [seek_before_fc, seek_after_fc],
+           color=['#fc8d59', '#6baed6'], alpha=0.8, edgecolor='white', width=0.5)
+    ax.set_ylabel('Mean SEEKING')
+    ax.set_title('(f) SEEKING: false closure effect')
+    ax.grid(alpha=0.3, axis='y')
+
+    for a in axes.flat:
+        a.set_xlabel('Time Step')
+
+    fig.suptitle('Scenario 9: SIT (Structural Incompleteness Tension)',
+                 fontsize=14, y=1.02)
+    plt.tight_layout()
+    return fig
+
+
+def plot_smc_cl(sim_identity, sim_stress,
+                stim_start=20, stim_end=60,
+                title='Scenario 10: SMC + Consciousness Level (CL)'):
+    """S10: 2×2 panel — CL comparison, A_SMC, SMC depth, Balance."""
+    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+    fig.suptitle(title, fontsize=14, fontweight='bold')
+
+    cl_vals = [h.get('cl', 0) for h in sim_identity.history]
+    cl_stress = [h.get('cl', 0) for h in sim_stress.history]
+    a_smc = [h.get('a_smc', 0) for h in sim_identity.history]
+    depth = [h.get('smc_depth', 0) for h in sim_identity.history]
+    balance = [h['balance'] for h in sim_identity.history]
+
+    axes[0, 0].plot(cl_vals, 'b-', linewidth=2, label='Identity stim')
+    axes[0, 0].plot(cl_stress, 'r--', linewidth=1.5, label='Stress')
+    axes[0, 0].axvspan(stim_start, stim_end, alpha=0.1, color='green')
+    axes[0, 0].set_ylabel('CL')
+    axes[0, 0].set_title('Consciousness Level')
+    axes[0, 0].legend()
+
+    axes[0, 1].plot(a_smc, 'g-', linewidth=2)
+    axes[0, 1].axvspan(stim_start, stim_end, alpha=0.1, color='green')
+    axes[0, 1].set_ylabel('A_SMC')
+    axes[0, 1].set_title('SMC Aggregate Activation')
+
+    axes[1, 0].plot(depth, 'm-', linewidth=2)
+    axes[1, 0].axvspan(stim_start, stim_end, alpha=0.1, color='green')
+    axes[1, 0].set_ylabel('Depth')
+    axes[1, 0].set_xlabel('Step')
+    axes[1, 0].set_title('SMC Recursion Depth')
+
+    axes[1, 1].plot(balance, 'orange', linewidth=2)
+    axes[1, 1].axhline(y=1.0, color='gray', linestyle=':', alpha=0.5)
+    axes[1, 1].axvspan(stim_start, stim_end, alpha=0.1, color='green')
+    axes[1, 1].set_ylabel('Balance')
+    axes[1, 1].set_xlabel('Step')
+    axes[1, 1].set_title('Balance (M/G ratio)')
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_sign_inversion(sim, neg_edges,
+                        title='Scenario 11: Sign Inversion (Bifurcation)'):
+    """S11: 1×2 panel — negative edge trajectories + cumulative inversions."""
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig.suptitle(title, fontsize=14, fontweight='bold')
+
+    for u, v in neg_edges[:8]:
+        weights = [h['edge_weights'].get((u, v), 0) for h in sim.history]
+        label = f'{u[:12]}\u2194{v[:12]}'
+        axes[0].plot(weights, linewidth=1.5, label=label)
+    axes[0].axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+    axes[0].set_xlabel('Step')
+    axes[0].set_ylabel('Edge weight')
+    axes[0].set_title('Negative edge trajectories')
+    axes[0].legend(fontsize=7, loc='best')
+
+    inv_counts = [len(h.get('inversions', [])) for h in sim.history]
+    cum_inv = np.cumsum(inv_counts)
+    axes[1].plot(cum_inv, 'r-', linewidth=2)
+    axes[1].set_xlabel('Step')
+    axes[1].set_ylabel('Cumulative inversions')
+    axes[1].set_title('Bifurcation events over time')
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_action_loop(closure_traj, cl_traj, sit_traj, seeking_traj, all_ahas,
+                     title='Scenario 12: Action Loop + AHA Moment'):
+    """S12: 2×2 panel — closure, CL, SIT, SEEKING with AHA markers."""
+    fig, axes = plt.subplots(2, 2, figsize=(14, 8))
+    fig.suptitle(title, fontsize=14, fontweight='bold')
+
+    axes[0, 0].plot(closure_traj, 'b-', linewidth=2)
+    axes[0, 0].axhline(y=0.95, color='red', linestyle=':', alpha=0.5,
+                        label='AHA threshold')
+    for t, _, _ in all_ahas:
+        axes[0, 0].axvline(x=t, color='gold', linestyle='--', alpha=0.7)
+    axes[0, 0].set_ylabel('Closure')
+    axes[0, 0].set_title('Career_purpose_question closure')
+    axes[0, 0].legend()
+
+    axes[0, 1].plot(cl_traj, 'g-', linewidth=2)
+    axes[0, 1].set_ylabel('CL')
+    axes[0, 1].set_title('Consciousness Level')
+
+    axes[1, 0].plot(sit_traj, 'm-', linewidth=2)
+    axes[1, 0].set_xlabel('Step')
+    axes[1, 0].set_ylabel('SIT')
+    axes[1, 0].set_title('SIT (drops as closure increases)')
+
+    axes[1, 1].plot(seeking_traj, 'orange', linewidth=2)
+    axes[1, 1].set_xlabel('Step')
+    axes[1, 1].set_ylabel('SEEKING')
+    axes[1, 1].set_title('SEEKING activation')
+    for t, _, _ in all_ahas:
+        axes[1, 1].axvline(x=t, color='gold', linestyle='--', alpha=0.7,
+                           label='AHA' if t == all_ahas[0][0] else '')
+    if all_ahas:
+        axes[1, 1].legend()
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_sensitivity_heatmap(sens_data, save_path=None):
+    """Sensitivity analysis heatmap."""
+    params = sens_data['params']
+    mults = sens_data['multipliers']
+    n_seeds = sens_data['n_seeds']
+
+    matrix = np.zeros((len(params), len(mults)))
+    for i, p in enumerate(params):
+        for j, m in enumerate(mults):
+            matrix[i, j] = sens_data['results'][p]['rates'][str(m)]
+
+    fig, ax = plt.subplots(figsize=(8, 10))
+    im = ax.imshow(matrix, cmap='RdYlGn', vmin=50, vmax=100, aspect='auto')
+
+    ax.set_xticks(range(len(mults)))
+    ax.set_xticklabels([f'\u00d7{m}' for m in mults])
+    ax.set_yticks(range(len(params)))
+    ax.set_yticklabels(params, fontsize=9)
+    ax.set_xlabel('Multiplier (relative to nominal)')
+    ax.set_title(f'Sensitivity Analysis \u2014 MC Pass Rate % ({n_seeds} seeds per cell)')
+
+    for i in range(len(params)):
+        for j in range(len(mults)):
+            val = matrix[i, j]
+            color = 'white' if val < 70 else 'black'
+            ax.text(j, i, f'{val:.0f}', ha='center', va='center',
+                    fontsize=8, color=color, fontweight='bold')
+
+    fig.colorbar(im, ax=ax, label='Pass rate %', shrink=0.6)
+    plt.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=150)
+    return fig
+
+
+def plot_ablation(abl_data, save_heatmap=None, save_barplot=None):
+    """Ablation study: heatmap + summary barplot. Returns (fig_heatmap, fig_barplot)."""
+    names = list(abl_data['ablations'].keys())
+    checks = abl_data['check_names']
+    n_seeds = abl_data['n_seeds']
+
+    matrix = np.zeros((len(names), len(checks)))
+    for i, name in enumerate(names):
+        pc = abl_data['ablations'][name]['per_check']
+        for j, ch in enumerate(checks):
+            matrix[i, j] = pc[ch]
+
+    # ── Heatmap ──
+    fig1, ax = plt.subplots(figsize=(14, 6))
+    im = ax.imshow(matrix, cmap='RdYlGn', vmin=0, vmax=n_seeds, aspect='auto')
+
+    ax.set_xticks(range(len(checks)))
+    ax.set_xticklabels(checks, rotation=45, ha='right', fontsize=9)
+    ax.set_yticks(range(len(names)))
+    ax.set_yticklabels(names, fontsize=9)
+    ax.set_title(f'Ablation Study \u2014 Per-Check Pass Count (out of {n_seeds})')
+
+    for i in range(len(names)):
+        for j in range(len(checks)):
+            val = int(matrix[i, j])
+            color = 'white' if val < n_seeds * 0.5 else 'black'
+            ax.text(j, i, str(val), ha='center', va='center',
+                    fontsize=8, color=color, fontweight='bold')
+
+    fig1.colorbar(im, ax=ax, label=f'Pass count / {n_seeds}', shrink=0.8)
+    plt.tight_layout()
+    if save_heatmap:
+        fig1.savefig(save_heatmap, dpi=150)
+
+    # ── Summary barplot ──
+    rates = [abl_data['ablations'][n]['pass_rate'] for n in names]
+    colors = ['#2ecc71' if r >= 95 else '#f39c12' if r >= 80 else '#e74c3c'
+              for r in rates]
+
+    fig2, ax2 = plt.subplots(figsize=(10, 5))
+    bars = ax2.barh(names, rates, color=colors)
+    ax2.set_xlabel('Overall Pass Rate %')
+    ax2.set_title('Ablation Study \u2014 Overall Pass Rate')
+    ax2.set_xlim(0, 105)
+    ax2.axvline(x=95, color='gray', linestyle='--', alpha=0.5,
+                label='95% threshold')
+    for bar, rate in zip(bars, rates):
+        ax2.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
+                 f'{rate:.1f}%', va='center', fontsize=9)
+    ax2.legend()
+    plt.tight_layout()
+    if save_barplot:
+        fig2.savefig(save_barplot, dpi=150)
+
+    return fig1, fig2

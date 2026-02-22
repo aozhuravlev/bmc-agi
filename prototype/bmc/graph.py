@@ -4,7 +4,8 @@ import networkx as nx
 
 from bmc_nodes_500 import (
     MEME_CLUSTERS, HUB_MEMES, NEGATIVE_EDGES, CROSS_LINKS,
-    UTILITY_CONNECTIONS, INCOMPAT_SPEC,
+    UTILITY_CONNECTIONS, INCOMPAT_SPEC, OPEN_MEMES,
+    SMC_MEMES, SMC_LEVEL_1, SMC_LEVEL_2,
 )
 from .config import UTILITY_NODES
 
@@ -15,6 +16,12 @@ for cluster, memes in MEME_CLUSTERS.items():
     for m in memes:
         ALL_MEMES.append(m)
         MEME_TO_CLUSTER[m] = cluster
+
+# ── Open memes (added once at module level, not per build call) ──
+OPEN_MEMES_LIST = [name for name, _, _, _ in OPEN_MEMES]
+for name, cluster, _, _ in OPEN_MEMES:
+    ALL_MEMES.append(name)
+    MEME_TO_CLUSTER[name] = cluster
 
 
 def build_bmc_graph(seed=42):
@@ -77,6 +84,17 @@ def build_bmc_graph(seed=42):
         for meme, weight, etype in connections:
             if meme in G.nodes():
                 G.add_edge(u, meme, weight=weight, etype=etype)
+
+    # ── Open memes (SIT: structural gaps / unsolved questions) ──
+    for name, cluster, connections, closure in OPEN_MEMES:
+        G.add_node(name, layer='memetic', cluster=cluster,
+                   activation=rng.uniform(0.05, 0.20),
+                   fidelity=rng.uniform(0.2, 0.5),
+                   age=rng.uniform(0, 50),
+                   is_open=True, closure=closure)
+        for target, weight in connections:
+            if target in G.nodes():
+                G.add_edge(name, target, weight=weight, etype='cross')
 
     # ── Build incompatibility matrix — from bmc_nodes_500 ──
     incompatibility = {}

@@ -618,3 +618,59 @@ INCOMPAT_SPEC = {
         'Gossip_attitude': 0.3, 'Vigilante_attitude': 0.2,
     },
 }
+
+
+# ============================================================
+# OPEN MEMES — unsolved questions / structural gaps (SIT)
+# ============================================================
+
+OPEN_MEMES = [
+    # (name, cluster, connections_to_existing_memes, initial_closure)
+    ('What_is_consciousness', 'knowledge',
+     [('Philosophy_mind', 0.7), ('Neuroscience_basics', 0.6), ('Cognitive_science', 0.5)], 0.15),
+    ('Career_purpose_question', 'profession',
+     [('Career_growth', 0.6), ('Core_identity', 0.5), ('Self_improvement', 0.4)], 0.3),
+    ('Meaning_of_life', 'beliefs',
+     [('Worldview', 0.7), ('Humanism', 0.5), ('Free_will', 0.6)], 0.1),
+    ('Optimal_diet_question', 'health',
+     [('Nutrition_belief', 0.6), ('Exercise_habit', 0.5)], 0.4),
+    ('AI_alignment_problem', 'technology',
+     [('AI_understanding', 0.7), ('Ethics_theory', 0.5), ('Network_science', 0.4)], 0.2),
+]
+
+
+# ============================================================
+# SMC (Self-Model Cluster) — memes whose targets reference
+# the system itself: target(m) ∈ M ∪ G ∪ I
+# Two recursion levels:
+#   Level 1: direct self-reference ("I am X")
+#   Level 2: meta-self-reference ("I know that I am X")
+# ============================================================
+
+SMC_LEVEL_1 = {
+    # Identity cluster — direct self-models
+    'Core_identity', 'Personal_narrative', 'Role_identity', 'Group_identity',
+    'Professional_identity', 'Parent_identity', 'Body_identity',
+    'Intellectual_identity', 'Creative_identity', 'Gender_identity',
+    'Age_identity', 'Ethnic_identity', 'National_identity', 'Class_identity',
+    'Spiritual_identity', 'Digital_identity', 'Sports_identity',
+    # Beliefs about self
+    'Worldview', 'Human_nature_view', 'Self_improvement',
+    # Emotion regulation — models of own affective patterns
+    'Attachment_style', 'Self_soothing', 'Stress_response',
+    # Relationships — models of own relational patterns
+    'Attachment_anxiety', 'Attachment_avoidance',
+}
+
+SMC_LEVEL_2 = {
+    # Meta-cognitive: memes about self-modeling
+    'Emotional_granularity',    # awareness of own emotional states
+    'Mindfulness_practice',     # attending to own attention
+    'Creative_identity_self',   # self-reference about creative self
+    # Knowledge about minds/selves (enables recursive SMC modeling)
+    'Philosophy_mind', 'Cognitive_science', 'Psychology_basics',
+    'Metacognitive_awareness',  # not yet in graph — placeholder for future
+}
+
+# Combined set for quick lookup
+SMC_MEMES = SMC_LEVEL_1 | SMC_LEVEL_2
